@@ -151,8 +151,7 @@
           <div class="err" id="e-branch">Please choose your branch.</div>
 
           <label class="l" for="question">Your Question</label>
-          <textarea class="in" id="question" name="question" rows="5" maxlength="1000" required placeholder="Type your question here"></textarea>
-          <div class="count" id="qCount">0 / 1000</div>
+          <textarea class="in" id="question" name="question" rows="5" maxlength="5000" required placeholder="Type your question here"></textarea>
           <div class="err" id="e-question">Please type your question (at least 5 characters).</div>
 
           <p class="fine">By sending your question, you agree that MBSB Bank may use your details to answer it and contact you about it, in line with the Personal Data Protection Act 2010.</p>
@@ -212,8 +211,6 @@ if (isClosed()) { $('#closedNote').style.display = 'block'; $('#form').style.dis
 // Remember name, contact and branch on this phone, so a second question is quick
 try { const s = JSON.parse(localStorage.getItem('mbsb-qa') || 'null'); if (s) { $('#name').value = s.name || ''; $('#phone').value = s.phone || ''; if (s.branch) $('#branch').value = s.branch; } } catch (e) {}
 
-const qc = () => { $('#qCount').textContent = `${$('#question').value.length} / 1000`; };
-$('#question').addEventListener('input', qc);
 
 function check(){
   const v = {
@@ -226,7 +223,7 @@ function check(){
     name: v.name.length >= 3 && /[A-Za-z]/.test(v.name) && !/\d{5,}/.test(v.name.replace(/[\s-]/g, '')),
     phone: v.phone.replace(/\D/g, '').length >= 9 && v.phone.length <= 20 && /^[+\d\s()-]+$/.test(v.phone),
     branch: !!v.branch,
-    question: v.question.length >= 5 && v.question.length <= 1000
+    question: v.question.length >= 5 && v.question.length <= 5000
   };
   for (const k in ok) { $('#e-' + k).classList.toggle('on', !ok[k]); $('#' + k).classList.toggle('bad', !ok[k]); }
   return Object.values(ok).every(Boolean) ? v : null;
@@ -259,7 +256,7 @@ $('#form').addEventListener('submit', async e => {
 });
 
 $('#againBtn').addEventListener('click', () => {
-  $('#question').value = ''; qc();
+  $('#question').value = '';
   $('#doneView').classList.remove('on'); $('#formView').style.display = '';
   $('#question').focus();
 });
