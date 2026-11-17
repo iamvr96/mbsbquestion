@@ -120,7 +120,7 @@
     <div class="regions" id="status"></div>
 
     <div class="bar">
-      <input class="in" id="q" type="search" placeholder="Search question, name, phone or branch" aria-label="Search">
+      <input class="in" id="q" type="search" placeholder="Search question, name, email, phone or branch" aria-label="Search">
       <select class="in" id="fBranch" aria-label="Branch"><option value="">All branches</option></select>
       <select class="in" id="fSort" aria-label="Order"><option value="old">Oldest first</option><option value="new">Newest first</option></select>
       <button class="btn" id="bigBtn" aria-pressed="false">Large text</button>
@@ -223,7 +223,7 @@ function render(){
   const order = [...all].sort((a, z) => ms(a.createdAt || { toMillis: () => Date.now() }) - ms(z.createdAt || { toMillis: () => Date.now() }));
   const num = new Map(order.map((r, i) => [r.id, i + 1]));
   const list = order.filter(r => (status === 'all' || (status === 'new' ? !r.answered : !!r.answered)) && (!b || r.branch === b) &&
-    (!q || [r.question, r.name, r.phone, r.branch].some(x => norm(x).includes(q))));
+    (!q || [r.question, r.name, r.email, r.phone, r.branch].some(x => norm(x).includes(q))));
   if (newest) list.reverse();
   const nNew = all.filter(r => !r.answered).length;
   $('#sTotal').textContent = all.length; $('#sNew').textContent = nNew; $('#sDone').textContent = all.length - nNew;
@@ -235,7 +235,7 @@ function render(){
       <div class="qnum">#${num.get(r.id)}</div>
       <div class="qbody">
         <p class="qtext">${esc(r.question)}</p>
-        <div class="qmeta"><b>${esc(r.name)}</b><span>${esc(r.branch)} · ${esc(regionOf(r.branch))}</span><span>${esc(r.phone)}</span><span>${when(r.createdAt)}</span>${r.answered ? '<span class="ok">✓ Answered</span>' : ''}</div>
+        <div class="qmeta"><b>${esc(r.name)}</b><span>${esc(r.branch)} · ${esc(regionOf(r.branch))}</span>${r.email ? `<span>${esc(r.email)}</span>` : ''}<span>${esc(r.phone)}</span><span>${when(r.createdAt)}</span>${r.answered ? '<span class="ok">✓ Answered</span>' : ''}</div>
       </div>
       <div class="qbtns">
         <button class="btn sm ${r.answered ? '' : 'pri'}" data-ans="${esc(r.id)}">${r.answered ? 'Undo' : 'Mark answered'}</button>
@@ -268,9 +268,9 @@ $('#list').addEventListener('click', async e => {
 $('#xlsBtn').addEventListener('click', () => {
   if (!window.XLSX) { toast('Excel tool did not load. Check your internet and reload.', true); return; }
   const rows = [...all].sort((a, b) => ms(a.createdAt) - ms(b.createdAt)).map((r, i) => ({
-    'No.': i + 1, 'Received (MYT)': when(r.createdAt), 'Name': r.name, 'Contact Number': r.phone, 'Branch': r.branch, 'Region': regionOf(r.branch),
+    'No.': i + 1, 'Received (MYT)': when(r.createdAt), 'Name': r.name, 'Email': r.email || '', 'Contact Number': r.phone, 'Branch': r.branch, 'Region': regionOf(r.branch),
     'Question': r.question, 'Status': r.answered ? 'Answered' : 'New' }));
-  const ws = XLSX.utils.json_to_sheet(rows); ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 28 }, { wch: 16 }, { wch: 20 }, { wch: 12 }, { wch: 80 }, { wch: 10 }];
+  const ws = XLSX.utils.json_to_sheet(rows); ws['!cols'] = [{ wch: 5 }, { wch: 16 }, { wch: 28 }, { wch: 30 }, { wch: 16 }, { wch: 20 }, { wch: 12 }, { wch: 80 }, { wch: 10 }];
   const byBranch = Object.entries(REGIONS).flatMap(([reg, l]) => l.map(b => ({ 'Region': reg, 'Branch': b, 'Questions': all.filter(r => r.branch === b).length })));
   byBranch.push({ 'Region': 'TOTAL', 'Branch': '', 'Questions': all.length });
   const ws2 = XLSX.utils.json_to_sheet(byBranch); ws2['!cols'] = [{ wch: 12 }, { wch: 22 }, { wch: 12 }];

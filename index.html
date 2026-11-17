@@ -142,6 +142,10 @@
           <input class="in" id="name" name="name" autocomplete="name" maxlength="120" required>
           <div class="err" id="e-name">Please enter your full name (not your IC number).</div>
 
+          <label class="l" for="email">Email</label>
+          <input class="in" id="email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="120" required>
+          <div class="err" id="e-email">Please enter a valid email address.</div>
+
           <label class="l" for="phone">Contact Number</label>
           <input class="in" id="phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="e.g. 012 345 6789" required>
           <div class="err" id="e-phone">Please enter a valid contact number.</div>
@@ -208,19 +212,21 @@ const ready = (async () => {
 const isClosed = () => Date.now() > new Date(EVENT.CLOSE).getTime();
 if (isClosed()) { $('#closedNote').style.display = 'block'; $('#form').style.display = 'none'; }
 
-// Remember name, contact and branch on this phone, so a second question is quick
-try { const s = JSON.parse(localStorage.getItem('mbsb-qa') || 'null'); if (s) { $('#name').value = s.name || ''; $('#phone').value = s.phone || ''; if (s.branch) $('#branch').value = s.branch; } } catch (e) {}
+// Remember name, email, contact and branch on this phone, so a second question is quick
+try { const s = JSON.parse(localStorage.getItem('mbsb-qa') || 'null'); if (s) { $('#name').value = s.name || ''; $('#email').value = s.email || ''; $('#phone').value = s.phone || ''; if (s.branch) $('#branch').value = s.branch; } } catch (e) {}
 
 
 function check(){
   const v = {
     name: $('#name').value.trim().replace(/\s+/g, ' '),
+    email: $('#email').value.trim().toLowerCase(),
     phone: $('#phone').value.trim(),
     branch: $('#branch').value,
     question: $('#question').value.trim()
   };
   const ok = {
     name: v.name.length >= 3 && /[A-Za-z]/.test(v.name) && !/\d{5,}/.test(v.name.replace(/[\s-]/g, '')),
+    email: /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email),
     phone: v.phone.replace(/\D/g, '').length >= 9 && v.phone.length <= 20 && /^[+\d\s()-]+$/.test(v.phone),
     branch: !!v.branch,
     question: v.question.length >= 5 && v.question.length <= 5000
@@ -228,7 +234,7 @@ function check(){
   for (const k in ok) { $('#e-' + k).classList.toggle('on', !ok[k]); $('#' + k).classList.toggle('bad', !ok[k]); }
   return Object.values(ok).every(Boolean) ? v : null;
 }
-['name','phone','branch','question'].forEach(k => $('#' + k).addEventListener('input', () => { $('#e-' + k).classList.remove('on'); $('#' + k).classList.remove('bad'); }));
+['name','email','phone','branch','question'].forEach(k => $('#' + k).addEventListener('input', () => { $('#e-' + k).classList.remove('on'); $('#' + k).classList.remove('bad'); }));
 
 $('#form').addEventListener('submit', async e => {
   e.preventDefault();
@@ -240,8 +246,14 @@ $('#form').addEventListener('submit', async e => {
   try {
     await ready;
     if (!fb) { const er = new Error('not connected'); er.code = 'not-connected'; throw er; }
-    await fb.addDoc(fb.collection(fb.db, 'questions'), { ...v, source: 'web', createdAt: fb.serverTimestamp() });
-    try { localStorage.setItem('mbsb-qa', JSON.stringify({ name: v.name, phone: v.phone, branch: v.branch })); } catch (er) {}
+    try { await fb.addDoc(fb.collection(fb.db, 'questions'), { ...v, source: 'web', createdAt: fb.serverTimestamp() }); }
+    catch (er) {
+      // Safety net: if the Firebase rules are still the older version (without email), save the question without it
+      if (er.code !== 'permission-denied') throw er;
+      const { email, ...rest } = v;
+      await fb.addDoc(fb.collection(fb.db, 'questions'), { ...rest, source: 'web', createdAt: fb.serverTimestamp() });
+    }
+    try { localStorage.setItem('mbsb-qa', JSON.stringify({ name: v.name, email: v.email, phone: v.phone, branch: v.branch })); } catch (er) {}
     $('#doneWho').textContent = `${v.name}, your question has been sent.`;
     $('#doneQ').textContent = v.question;
     $('#formView').style.display = 'none'; $('#doneView').classList.add('on');
